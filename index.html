@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Security+ Acronym Arcade — CompTIA Security+ Flashcards &amp; Games</title>
+  <meta name="description" content="Study CompTIA Security+ acronyms with flashcards, Match, Memory, Test, and Blitz games. Educational use only." />
+  <meta name="theme-color" content="#4db4f0" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2222%22>⚡</text></svg>" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body data-depth="0">
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+
+    <section class="hero">
+      <h1>Security+ Acronym Arcade</h1>
+      <p>334 CompTIA Security+ acronyms, turned into flashcards and four study games. Pick a tile to start.</p>
+      <div class="disclaimer" id="hero-disclaimer"></div>
+    </section>
+
+    <main>
+      <div class="tile-grid" id="tile-grid">
+        <a class="tile tile--flashcards" href="pages/flashcards.html">
+          <span class="tile-glow"></span>
+          <span class="tile-icon">ICON_CARDS</span>
+          <div>
+            <h2>Flashcards</h2>
+            <p>Classic flip cards — acronym on the front, full expansion and definition on the back.</p>
+          </div>
+          <span class="tile-count">334 cards</span>
+        </a>
+
+        <a class="tile tile--match" href="pages/match.html">
+          <span class="tile-glow"></span>
+          <span class="tile-icon">ICON_SUN</span>
+          <div>
+            <h2>Match</h2>
+            <p>Pair each acronym with its correct definition across two columns before time runs out.</p>
+          </div>
+          <span class="tile-count">8 pairs / round</span>
+        </a>
+
+        <a class="tile tile--memory" href="pages/memory.html">
+          <span class="tile-glow"></span>
+          <span class="tile-icon">ICON_CLOUD</span>
+          <div>
+            <h2>Memory</h2>
+            <p>Flip tiles to find matching acronym + expansion pairs. Fewer flips, better score.</p>
+          </div>
+          <span class="tile-count">6 pairs / round</span>
+        </a>
+
+        <a class="tile tile--test" href="pages/test.html">
+          <span class="tile-glow"></span>
+          <span class="tile-icon">ICON_FLAME</span>
+          <div>
+            <h2>Test</h2>
+            <p>Multiple-choice quiz mode. Answer at your own pace and review your score at the end.</p>
+          </div>
+          <span class="tile-count">15 questions</span>
+        </a>
+
+        <a class="tile tile--blitz" href="pages/blitz.html">
+          <span class="tile-glow"></span>
+          <span class="tile-icon">ICON_BOLT</span>
+          <div>
+            <h2>Blitz</h2>
+            <p>Beat the clock! Rapid-fire multiple choice against a 60-second countdown.</p>
+          </div>
+          <span class="tile-count">60 seconds</span>
+        </a>
+      </div>
+    </main>
+
+    <footer class="site-footer" id="site-footer"></footer>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    renderTopbar();
+    renderDisclaimer("hero-disclaimer");
+    renderFooter("site-footer");
+
+    const iconMap = {
+      ICON_CARDS: ICONS.cards,
+      ICON_SUN: ICONS.sun,
+      ICON_CLOUD: ICONS.cloud,
+      ICON_FLAME: ICONS.flame,
+      ICON_BOLT: ICONS.bolt,
+    };
+    document.querySelectorAll(".tile-icon").forEach((el) => {
+      const key = el.textContent.trim();
+      if (iconMap[key]) el.innerHTML = iconMap[key];
+    });
+  </script>
+</body>
+</html>

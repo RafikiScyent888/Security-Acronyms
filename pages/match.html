@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Match — Security+ Acronym Arcade</title>
+  <meta name="theme-color" content="#f59e0b" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2222%22>⚡</text></svg>" />
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body data-depth="1">
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+
+    <div class="game-header">
+      <div class="game-title">
+        <span class="tile-icon" style="background:linear-gradient(150deg,#ffd166,#f59e0b); color:#3b2400;" id="mode-icon"></span>
+        <h1>Match</h1>
+      </div>
+      <div class="hud">
+        <div class="hud-stat"><span>Matched</span><span id="hud-matched">0 / 8</span></div>
+        <div class="hud-stat"><span>Mistakes</span><span id="hud-mistakes">0</span></div>
+        <div class="hud-stat"><span>Time</span><span id="hud-time">0:00</span></div>
+        <button class="btn btn-ghost" id="pause-btn" aria-label="Pause"></button>
+      </div>
+    </div>
+
+    <main class="card-stage" id="game-area">
+      <p class="center-note">Tap an acronym, then tap its matching definition.</p>
+      <div class="match-columns">
+        <div class="match-col" id="col-acronyms"></div>
+        <div class="match-col" id="col-definitions"></div>
+      </div>
+    </main>
+
+    <div class="results-card" id="results" hidden>
+      <span class="tile-icon" style="background:linear-gradient(150deg,#ffd166,#f59e0b); color:#3b2400; margin:0 auto;" id="results-icon"></span>
+      <h2>Round complete!</h2>
+      <div class="results-stats">
+        <div><div class="num" id="res-time">0:00</div><div class="lab">Time</div></div>
+        <div><div class="num" id="res-mistakes">0</div><div class="lab">Mistakes</div></div>
+        <div><div class="num" id="res-best">0:00</div><div class="lab">Best time</div></div>
+      </div>
+      <div class="results-actions">
+        <button class="btn btn-primary" id="play-again-btn">Play again</button>
+        <a class="btn btn-ghost" href="../index.html">Dashboard</a>
+      </div>
+    </div>
+
+    <footer class="site-footer" id="site-footer"></footer>
+  </div>
+
+  <script src="../js/acronyms-data.js"></script>
+  <script src="../js/common.js"></script>
+  <script>
+    renderTopbar();
+    renderFooter("site-footer");
+    document.getElementById("pause-btn").innerHTML = ICONS.pause;
+    document.getElementById("mode-icon").innerHTML = ICONS.sun;
+    document.getElementById("results-icon").innerHTML = ICONS.trophy;
+
+    const ROUND_SIZE = 8;
+    const gameArea = document.getElementById("game-area");
+    const resultsEl = document.getElementById("results");
+    const colAcronyms = document.getElementById("col-acronyms");
+    const colDefinitions = document.getElementById("col-definitions");
+    const hudMatched = document.getElementById("hud-matched");
+    const hudMistakes = document.getElementById("hud-mistakes");
+    const hudTime = document.getElementById("hud-time");
+
+    let pairs, matchedCount, mistakes, elapsed, timerHandle, selectedLeft, selectedRight, locked;
+
+    function startRound() {
+      pairs = sampleArray(ACRONYMS, ROUND_SIZE);
+      matchedCount = 0;
+      mistakes = 0;
+      elapsed = 0;
+      selectedLeft = null;
+      selectedRight = null;
+      locked = false;
+      resultsEl.hidden = true;
+      gameArea.hidden = false;
+      updateHud();
+      renderColumns();
+      clearInterval(timerHandle);
+      timerHandle = setInterval(() => {
+        if (!pauseCtl.paused) {
+          elapsed++;
+          hudTime.textContent = formatTime(elapsed);
+        }
+      }, 1000);
+    }
+
+    function updateHud() {
+      hudMatched.textContent = `${matchedCount} / ${pairs.length}`;
+      hudMistakes.textContent = mistakes;
+      hudTime.textContent = formatTime(elapsed);
+    }
+
+    function renderColumns() {
+      const leftOrder = shuffleArray(pairs);
+      const rightOrder = shuffleArray(pairs);
+      colAcronyms.innerHTML = "";
+      colDefinitions.innerHTML = "";
+      leftOrder.forEach((item) => {
+        const btn = document.createElement("button");
+        btn.className = "match-item";
+        btn.textContent = item.acronym;
+        btn.dataset.id = item.id;
+        btn.addEventListener("click", () => selectLeft(btn, item));
+        colAcronyms.appendChild(btn);
+      });
+      rightOrder.forEach((item) => {
+        const btn = document.createElement("button");
+        btn.className = "match-item";
+        btn.textContent = item.definition;
+        btn.dataset.id = item.id;
+        btn.addEventListener("click", () => selectRight(btn, item));
+        colDefinitions.appendChild(btn);
+      });
+    }
+
+    function selectLeft(el, item) {
+      if (locked || pauseCtl.paused || el.classList.contains("correct")) return;
+      if (selectedLeft) selectedLeft.el.classList.remove("selected");
+      selectedLeft = { el, item };
+      el.classList.add("selected");
+      tryMatch();
+    }
+
+    function selectRight(el, item) {
+      if (locked || pauseCtl.paused || el.classList.contains("correct")) return;
+      if (selectedRight) selectedRight.el.classList.remove("selected");
+      selectedRight = { el, item };
+      el.classList.add("selected");
+      tryMatch();
+    }
+
+    function tryMatch() {
+      if (!selectedLeft || !selectedRight) return;
+      locked = true;
+      if (selectedLeft.item.id === selectedRight.item.id) {
+        selectedLeft.el.classList.remove("selected");
+        selectedRight.el.classList.remove("selected");
+        selectedLeft.el.classList.add("correct");
+        selectedRight.el.classList.add("correct");
+        matchedCount++;
+        selectedLeft = null;
+        selectedRight = null;
+        locked = false;
+        updateHud();
+        if (matchedCount === pairs.length) finishRound();
+      } else {
+        mistakes++;
+        updateHud();
+        selectedLeft.el.classList.add("wrong");
+        selectedRight.el.classList.add("wrong");
+        setTimeout(() => {
+          selectedLeft.el.classList.remove("selected", "wrong");
+          selectedRight.el.classList.remove("selected", "wrong");
+          selectedLeft = null;
+          selectedRight = null;
+          locked = false;
+        }, 500);
+      }
+    }
+
+    function finishRound() {
+      clearInterval(timerHandle);
+      gameArea.hidden = true;
+      resultsEl.hidden = false;
+      document.getElementById("res-time").textContent = formatTime(elapsed);
+      document.getElementById("res-mistakes").textContent = mistakes;
+      const improved = Scores.setBestIfBetter("match-time", elapsed, false);
+      const best = Scores.getBest("match-time");
+      document.getElementById("res-best").textContent = formatTime(best);
+      if (improved) showToast("New best time!");
+    }
+
+    document.getElementById("play-again-btn").addEventListener("click", startRound);
+
+    const pauseCtl = new PauseController({
+      onPause: () => {},
+      onResume: () => {},
+    });
+    document.getElementById("pause-btn").addEventListener("click", () => pauseCtl.pause());
+
+    startRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Test — Security+ Acronym Arcade</title>
+  <meta name="theme-color" content="#dc2626" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2222%22>⚡</text></svg>" />
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body data-depth="1">
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+
+    <div class="game-header">
+      <div class="game-title">
+        <span class="tile-icon" style="background:linear-gradient(150deg,#fb923c,#dc2626); color:#fff;" id="mode-icon"></span>
+        <h1>Test</h1>
+      </div>
+      <div class="hud">
+        <div class="hud-stat"><span>Question</span><span id="hud-index">1 / 15</span></div>
+        <div class="hud-stat"><span>Score</span><span id="hud-score">0</span></div>
+        <button class="btn btn-ghost" id="pause-btn" aria-label="Pause"></button>
+      </div>
+    </div>
+
+    <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
+
+    <main class="card-stage" id="game-area">
+      <div class="quiz-card">
+        <div class="quiz-prompt-label">What does this acronym stand for?</div>
+        <div class="quiz-prompt" id="quiz-acronym">AAA</div>
+        <div class="quiz-options" id="quiz-options"></div>
+      </div>
+      <button class="btn btn-primary" id="next-btn" hidden>Next question &rarr;</button>
+    </main>
+
+    <div class="results-card" id="results" hidden>
+      <span class="tile-icon" style="background:linear-gradient(150deg,#fb923c,#dc2626); color:#fff; margin:0 auto;" id="results-icon"></span>
+      <h2>Test complete!</h2>
+      <div class="big-score" id="res-score">0 / 15</div>
+      <div class="results-stats">
+        <div><div class="num" id="res-pct">0%</div><div class="lab">Accuracy</div></div>
+        <div><div class="num" id="res-best">0%</div><div class="lab">Best</div></div>
+      </div>
+      <div id="review-list" style="text-align:left; margin-top:14px;"></div>
+      <div class="results-actions">
+        <button class="btn btn-primary" id="play-again-btn">Take again</button>
+        <a class="btn btn-ghost" href="../index.html">Dashboard</a>
+      </div>
+    </div>
+
+    <footer class="site-footer" id="site-footer"></footer>
+  </div>
+
+  <script src="../js/acronyms-data.js"></script>
+  <script src="../js/common.js"></script>
+  <script>
+    renderTopbar();
+    renderFooter("site-footer");
+    document.getElementById("pause-btn").innerHTML = ICONS.pause;
+    document.getElementById("mode-icon").innerHTML = ICONS.flame;
+    document.getElementById("results-icon").innerHTML = ICONS.trophy;
+
+    const QUESTION_COUNT = 15;
+    const OPTION_COUNT = 4;
+
+    const gameArea = document.getElementById("game-area");
+    const resultsEl = document.getElementById("results");
+    const acronymEl = document.getElementById("quiz-acronym");
+    const optionsEl = document.getElementById("quiz-options");
+    const hudIndex = document.getElementById("hud-index");
+    const hudScore = document.getElementById("hud-score");
+    const progressFill = document.getElementById("progress-fill");
+    const nextBtn = document.getElementById("next-btn");
+
+    let questions, qIndex, score, answered, missed;
+
+    function buildQuestions() {
+      return sampleArray(ACRONYMS, QUESTION_COUNT).map((item) => {
+        const distractors = pickDistractors(item, ACRONYMS, OPTION_COUNT - 1);
+        const options = shuffleArray([item, ...distractors]);
+        return { item, options };
+      });
+    }
+
+    function startQuiz() {
+      questions = buildQuestions();
+      qIndex = 0;
+      score = 0;
+      answered = false;
+      missed = [];
+      resultsEl.hidden = true;
+      gameArea.hidden = false;
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      answered = false;
+      nextBtn.hidden = true;
+      const q = questions[qIndex];
+      acronymEl.textContent = q.item.acronym;
+      hudIndex.textContent = `${qIndex + 1} / ${questions.length}`;
+      hudScore.textContent = score;
+      progressFill.style.width = `${(qIndex / questions.length) * 100}%`;
+      optionsEl.innerHTML = "";
+      q.options.forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.className = "quiz-option";
+        btn.textContent = opt.definition;
+        btn.addEventListener("click", () => selectOption(btn, opt, q));
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    function selectOption(btn, opt, q) {
+      if (answered || pauseCtl.paused) return;
+      answered = true;
+      const correct = opt.id === q.item.id;
+      [...optionsEl.children].forEach((child) => (child.disabled = true));
+      if (correct) {
+        btn.classList.add("correct");
+        score++;
+      } else {
+        btn.classList.add("wrong");
+        missed.push(q.item);
+        [...optionsEl.children].forEach((child) => {
+          if (child.textContent === q.item.definition) child.classList.add("correct");
+        });
+      }
+      hudScore.textContent = score;
+      nextBtn.hidden = false;
+      nextBtn.focus();
+    }
+
+    function nextQuestion() {
+      qIndex++;
+      if (qIndex >= questions.length) finishQuiz();
+      else renderQuestion();
+    }
+
+    function finishQuiz() {
+      progressFill.style.width = "100%";
+      gameArea.hidden = true;
+      resultsEl.hidden = false;
+      const pct = Math.round((score / questions.length) * 100);
+      document.getElementById("res-score").textContent = `${score} / ${questions.length}`;
+      document.getElementById("res-pct").textContent = `${pct}%`;
+      const improved = Scores.setBestIfBetter("test-pct", pct, true);
+      document.getElementById("res-best").textContent = `${Scores.getBest("test-pct")}%`;
+      if (improved) showToast("New best score!");
+
+      const reviewEl = document.getElementById("review-list");
+      if (missed.length) {
+        reviewEl.innerHTML =
+          `<p class="center-note" style="text-align:center;">Review these:</p>` +
+          missed
+            .map(
+              (m) =>
+                `<p style="font-size:0.85rem; margin:6px 0;"><strong>${m.acronym}</strong> — ${m.expansion}</p>`
+            )
+            .join("");
+      } else {
+        reviewEl.innerHTML = `<p class="center-note" style="text-align:center;">Perfect score — nice work!</p>`;
+      }
+    }
+
+    nextBtn.addEventListener("click", nextQuestion);
+    document.getElementById("play-again-btn").addEventListener("click", startQuiz);
+
+    const pauseCtl = new PauseController();
+    document.getElementById("pause-btn").addEventListener("click", () => pauseCtl.pause());
+
+    startQuiz();
+  </script>
+</body>
+</html>

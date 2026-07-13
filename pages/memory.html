@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Memory — Security+ Acronym Arcade</title>
+  <meta name="theme-color" content="#1e293b" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2222%22>⚡</text></svg>" />
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body data-depth="1">
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+
+    <div class="game-header">
+      <div class="game-title">
+        <span class="tile-icon" style="background:linear-gradient(150deg,#64748b,#1e293b); color:#fff;" id="mode-icon"></span>
+        <h1>Memory</h1>
+      </div>
+      <div class="hud">
+        <div class="hud-stat"><span>Pairs</span><span id="hud-matched">0 / 6</span></div>
+        <div class="hud-stat"><span>Flips</span><span id="hud-flips">0</span></div>
+        <div class="hud-stat"><span>Time</span><span id="hud-time">0:00</span></div>
+        <button class="btn btn-ghost" id="pause-btn" aria-label="Pause"></button>
+      </div>
+    </div>
+
+    <main class="card-stage" id="game-area">
+      <p class="center-note">Flip two tiles to find the acronym and its matching expansion.</p>
+      <div class="memory-grid" id="memory-grid"></div>
+    </main>
+
+    <div class="results-card" id="results" hidden>
+      <span class="tile-icon" style="background:linear-gradient(150deg,#64748b,#1e293b); color:#fff; margin:0 auto;" id="results-icon"></span>
+      <h2>All pairs found!</h2>
+      <div class="results-stats">
+        <div><div class="num" id="res-time">0:00</div><div class="lab">Time</div></div>
+        <div><div class="num" id="res-flips">0</div><div class="lab">Flips</div></div>
+        <div><div class="num" id="res-best">0</div><div class="lab">Best flips</div></div>
+      </div>
+      <div class="results-actions">
+        <button class="btn btn-primary" id="play-again-btn">Play again</button>
+        <a class="btn btn-ghost" href="../index.html">Dashboard</a>
+      </div>
+    </div>
+
+    <footer class="site-footer" id="site-footer"></footer>
+  </div>
+
+  <script src="../js/acronyms-data.js"></script>
+  <script src="../js/common.js"></script>
+  <script>
+    renderTopbar();
+    renderFooter("site-footer");
+    document.getElementById("pause-btn").innerHTML = ICONS.pause;
+    document.getElementById("mode-icon").innerHTML = ICONS.cloud;
+    document.getElementById("results-icon").innerHTML = ICONS.trophy;
+
+    const PAIR_COUNT = 6;
+    const gameArea = document.getElementById("game-area");
+    const resultsEl = document.getElementById("results");
+    const gridEl = document.getElementById("memory-grid");
+    const hudMatched = document.getElementById("hud-matched");
+    const hudFlips = document.getElementById("hud-flips");
+    const hudTime = document.getElementById("hud-time");
+
+    let cards, matchedPairs, flips, elapsed, timerHandle, openCards, locked;
+
+    function buildCards() {
+      const pairs = sampleArray(ACRONYMS, PAIR_COUNT);
+      const items = [];
+      pairs.forEach((item) => {
+        items.push({ id: item.id, kind: "acronym", label: item.acronym });
+        items.push({ id: item.id, kind: "expansion", label: item.expansion });
+      });
+      return shuffleArray(items);
+    }
+
+    function startRound() {
+      cards = buildCards();
+      matchedPairs = 0;
+      flips = 0;
+      elapsed = 0;
+      openCards = [];
+      locked = false;
+      resultsEl.hidden = true;
+      gameArea.hidden = false;
+      updateHud();
+      renderGrid();
+      clearInterval(timerHandle);
+      timerHandle = setInterval(() => {
+        if (!pauseCtl.paused) {
+          elapsed++;
+          hudTime.textContent = formatTime(elapsed);
+        }
+      }, 1000);
+    }
+
+    function updateHud() {
+      hudMatched.textContent = `${matchedPairs} / ${PAIR_COUNT}`;
+      hudFlips.textContent = flips;
+      hudTime.textContent = formatTime(elapsed);
+    }
+
+    function renderGrid() {
+      gridEl.innerHTML = "";
+      cards.forEach((card, i) => {
+        const el = document.createElement("div");
+        el.className = "memory-card";
+        el.dataset.index = i;
+        el.innerHTML = `
+          <div class="memory-card-inner">
+            <div class="memory-face back">${ICONS.bolt}</div>
+            <div class="memory-face front">${card.label}</div>
+          </div>`;
+        el.addEventListener("click", () => flipCard(i, el));
+        gridEl.appendChild(el);
+      });
+    }
+
+    function flipCard(i, el) {
+      if (locked || pauseCtl.paused) return;
+      if (el.classList.contains("flipped") || el.classList.contains("matched")) return;
+      if (openCards.length === 2) return;
+
+      el.classList.add("flipped");
+      openCards.push({ i, el });
+
+      if (openCards.length === 2) {
+        flips++;
+        updateHud();
+        const [a, b] = openCards;
+        if (cards[a.i].id === cards[b.i].id) {
+          a.el.classList.add("matched");
+          b.el.classList.add("matched");
+          openCards = [];
+          matchedPairs++;
+          updateHud();
+          if (matchedPairs === PAIR_COUNT) finishRound();
+        } else {
+          locked = true;
+          setTimeout(() => {
+            a.el.classList.remove("flipped");
+            b.el.classList.remove("flipped");
+            openCards = [];
+            locked = false;
+          }, 800);
+        }
+      }
+    }
+
+    function finishRound() {
+      clearInterval(timerHandle);
+      gameArea.hidden = true;
+      resultsEl.hidden = false;
+      document.getElementById("res-time").textContent = formatTime(elapsed);
+      document.getElementById("res-flips").textContent = flips;
+      const improved = Scores.setBestIfBetter("memory-flips", flips, false);
+      const best = Scores.getBest("memory-flips");
+      document.getElementById("res-best").textContent = best;
+      if (improved) showToast("New best score!");
+    }
+
+    document.getElementById("play-again-btn").addEventListener("click", startRound);
+
+    const pauseCtl = new PauseController();
+    document.getElementById("pause-btn").addEventListener("click", () => pauseCtl.pause());
+
+    startRound();
+  </script>
+</body>
+</html>
