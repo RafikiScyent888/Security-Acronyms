@@ -8,6 +8,10 @@
   <meta name="theme-color" content="#4db4f0" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2222%22>⚡</text></svg>" />
   <link rel="stylesheet" href="css/styles.css" />
+  <!-- Stamps the saved light/dark choice on <html> BEFORE the first paint.
+       Synchronous and in the head on purpose: deferred, it becomes a
+       white flash in the face of somebody with light sensitivity. -->
+  <script src="js/theme.js"></script>
 </head>
 <body data-depth="0">
   <div class="app-shell">
