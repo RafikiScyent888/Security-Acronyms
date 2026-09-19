@@ -14,6 +14,7 @@ const ICONS = {
   shuffle: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h3.5L14 18h3.5M14 6h3.5L21 9.5M17.5 6 21 9.5 17.5 13M17.5 18 21 14.5 17.5 11M3 18h3.5L11 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   trophy: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 4h10v5a5 5 0 0 1-10 0V4z" fill="currentColor"/><path d="M7 5H4a3 3 0 0 0 3 5M17 5h3a3 3 0 0 1-3 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 15h4v3h-4z" fill="currentColor"/><path d="M8 21h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12.5 9.5 18 20 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20.5 14.3A8.6 8.6 0 0 1 9.7 3.5a8.6 8.6 0 1 0 10.8 10.8z" fill="currentColor"/></svg>',
 };
 
 const DISCLAIMER_TEXT =
@@ -143,6 +144,39 @@ function assetPath(rel) {
   return document.body.dataset.depth === "1" ? `../${rel}` : rel;
 }
 
+/* ---------- Light / dark toggle ----------
+
+   The button says where it is GOING, never where it is — "Dark mode"
+   means pressing it gives you dark mode. Three signals carry that, not
+   one: the icon changes, the words change, and a toast says out loud
+   what happened. Nobody here has to tell a moon from a sun at a glance
+   on a bad eye day.
+
+   theme.js has already stamped the page by the time this runs; all this
+   does is put a control on it and keep the control's face in step. */
+function paintThemeButton(btn) {
+  if (!btn || typeof Theme === "undefined") return;
+  const goingDark = Theme.next() === Theme.DARK;
+  btn.innerHTML = `${goingDark ? ICONS.moon : ICONS.sun} <span>${Theme.label()}</span>`;
+  btn.setAttribute("aria-label", Theme.description());
+  btn.setAttribute("title", Theme.description());
+  btn.dataset.theme = Theme.current();
+}
+
+function renderThemeToggle(btn) {
+  if (!btn || typeof Theme === "undefined") return;
+  paintThemeButton(btn);
+  btn.addEventListener("click", () => {
+    const now = Theme.toggle();
+    paintThemeButton(btn);
+    showToast(now === Theme.DARK ? "Dark mode on" : "Light mode on");
+  });
+  /* If they have never chosen and the operating system flips underneath
+     them, the page follows — so the button has to follow too, or it sits
+     there offering to do what has already happened. */
+  Theme.onchange = () => paintThemeButton(btn);
+}
+
 /* ---------- Shared page chrome ---------- */
 function renderTopbar({ backLabel = "Dashboard" } = {}) {
   const el = document.getElementById("topbar");
@@ -153,8 +187,10 @@ function renderTopbar({ backLabel = "Dashboard" } = {}) {
       Security+ Acronym Arcade
     </a>
     <div class="topbar-actions">
+      <button type="button" class="btn btn-ghost theme-toggle" id="theme-toggle"></button>
       <a class="btn btn-ghost" href="${dashboardPath()}">${ICONS.home} ${backLabel}</a>
     </div>`;
+  renderThemeToggle(el.querySelector("#theme-toggle"));
 }
 
 function renderDisclaimer(target) {
