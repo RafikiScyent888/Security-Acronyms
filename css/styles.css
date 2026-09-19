@@ -43,6 +43,42 @@
   --good: #16a34a;
   --bad: #dc2626;
   --warn: #d97706;
+
+  /* STATE SURFACES, AND THE INK THAT GOES ON THEM.
+
+     These were hardcoded light greens and pinks used in both themes. On
+     a dark page they stayed light, so anything written on them had to be
+     dark — while every other control wanted light ink. Tokens let each
+     theme answer for itself. */
+  --ok-bg: #dcfce7;
+  --ok-ink: #05321a;
+  --bad-bg: #fee2e2;
+  --bad-ink: #4a0c0c;
+  --ghost-bg: rgba(255, 255, 255, 0.55);
+
+  /* EVERY DARK DIFFERENCE IS A TOKEN, WITH NO EXCEPTIONS.
+
+     There used to be three rules that went dark on their own — the
+     disclaimer panel and the two decorations — each written against
+     `[data-theme="dark"]` only. The media-query copy never got them, so
+     an operating-system dark page painted a 60% WHITE wash behind the
+     disclaimer and hung a cream sun over the topbar. Nothing catches
+     that except reading both blocks side by side and noticing.
+
+     So now the two blocks below hold nothing but token values, and
+     verify/theme.mjs fails the build if they ever stop matching. */
+  --panel-wash: rgba(255, 255, 255, 0.6);
+  --sun-wash: radial-gradient(circle at 35% 35%, rgba(255, 244, 200, 0.9),
+                              rgba(255, 220, 120, 0.15) 60%, transparent 70%);
+  --glow-wash: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.35), transparent 65%);
+
+  /* The toast was `background: var(--ink); color: #fff`. --ink is the
+     PAGE's text colour, so on a dark page it is near-white — near-white
+     ink on a near-white pill. The little message confirming the theme
+     had changed was itself unreadable in the theme it announced. It
+     needs its own pair, inverted against the page either way. */
+  --toast-bg: #0b2338;
+  --toast-ink: #ffffff;
 }
 
 :root[data-theme="dark"] {
@@ -56,8 +92,31 @@
   --border-soft: rgba(234, 245, 255, 0.14);
   --shadow-color: rgba(0, 0, 0, 0.55);
   --focus-ring: #eaf5ff;
+  --ok-bg: #0d2f1c;
+  --ok-ink: #b6f3cf;
+  --bad-bg: #3a1417;
+  --bad-ink: #ffc9c4;
+  /* A 55% white wash over a dark page is a pale grey that neither light
+     nor dark ink can sit on. On a dark page the ghost button wants a
+     DARKER backing, not a lighter one — a white wash was still leaving
+     it at 6.5:1, half a point short, and it has to clear 7. */
+  --ghost-bg: rgba(0, 0, 0, 0.28);
+  --panel-wash: rgba(255, 255, 255, 0.06);
+  --sun-wash: radial-gradient(circle at 35% 35%, rgba(255, 244, 200, 0.16),
+                              rgba(255, 220, 120, 0.05) 60%, transparent 70%);
+  --glow-wash: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.07), transparent 65%);
+  --toast-bg: #eaf5ff;
+  --toast-ink: #0b2338;
 }
 
+/* THE NO-JAVASCRIPT PATH, AND ONLY THAT.
+
+   theme.js stamps an explicit data-theme on <html> before the first
+   paint, so in a working browser the block above is what runs and this
+   one never matches. This is the safety net for a student whose
+   JavaScript is blocked — a school-managed laptop, a locked-down
+   library machine — and it has to carry the SAME VALUES, which is what
+   verify/theme.mjs checks. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --sky-top: #0f2b40;
@@ -70,6 +129,17 @@
     --border-soft: rgba(234, 245, 255, 0.14);
     --shadow-color: rgba(0, 0, 0, 0.55);
     --focus-ring: #eaf5ff;
+    --ok-bg: #0d2f1c;
+    --ok-ink: #b6f3cf;
+    --bad-bg: #3a1417;
+    --bad-ink: #ffc9c4;
+    --ghost-bg: rgba(0, 0, 0, 0.28);
+    --panel-wash: rgba(255, 255, 255, 0.06);
+    --sun-wash: radial-gradient(circle at 35% 35%, rgba(255, 244, 200, 0.16),
+                                rgba(255, 220, 120, 0.05) 60%, transparent 70%);
+    --glow-wash: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.07), transparent 65%);
+    --toast-bg: #eaf5ff;
+    --toast-ink: #0b2338;
   }
 }
 
@@ -106,12 +176,19 @@ body::after {
   border-radius: 50%;
 }
 
+/* THE DECORATIONS NEVER FOLLOWED THE THEME.
+
+   Both were hardcoded near-white, so on a dark page a bright cream sun
+   and a white glow sat on top of the navy — and anything drawn over
+   them, like the topbar's Dashboard button, landed on pale khaki. That
+   measured 1.5:1. They stay, through a token, so each theme answers for
+   itself in one place. */
 body::before {
   width: 46vmax;
   height: 46vmax;
   top: -18vmax;
   right: -14vmax;
-  background: radial-gradient(circle at 35% 35%, rgba(255, 244, 200, 0.9), rgba(255, 220, 120, 0.15) 60%, transparent 70%);
+  background: var(--sun-wash);
 }
 
 body::after {
@@ -119,7 +196,7 @@ body::after {
   height: 60vmax;
   bottom: -30vmax;
   left: -20vmax;
-  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.35), transparent 65%);
+  background: var(--glow-wash);
 }
 
 .app-shell {
@@ -208,7 +285,8 @@ body::after {
 }
 
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--ghost-bg);
+  color: var(--ink);
 }
 
 .btn-danger {
@@ -219,6 +297,23 @@ body::after {
 .btn-block {
   width: 100%;
   justify-content: center;
+}
+
+/* ---------- Light / dark toggle ----------
+
+   The sizing is scoped to this button alone. Every other .btn on the
+   site ships an inline SVG that renders at 0x0 — a flex item with no
+   intrinsic size in a container that gives it none — so those icons
+   have never actually appeared. Sizing them globally would make icons
+   pop up on every button across the whole site, which is not what was
+   asked for. Left as it is, and raised separately.
+
+   Here the icon has a job: it is one of the three signals that say
+   which way the button goes, alongside the words and the toast. */
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
 }
 
 .btn:disabled {
@@ -247,7 +342,7 @@ body::after {
 }
 
 .disclaimer {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--panel-wash);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   padding: 12px 16px;
@@ -256,10 +351,6 @@ body::after {
   max-width: 720px;
   margin: 18px auto 0;
   line-height: 1.5;
-}
-
-:root[data-theme="dark"] .disclaimer {
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .disclaimer strong {
@@ -547,6 +638,7 @@ footer.site-footer a {
 
 .match-item {
   background: var(--card-bg);
+  color: var(--ink);
   border: 2px solid transparent;
   border-radius: var(--radius-md);
   padding: 12px 14px;
@@ -571,14 +663,18 @@ footer.site-footer a {
 
 .match-item.correct {
   border-color: var(--good);
-  background: #dcfce7;
+  background: var(--ok-bg);
+  color: var(--ok-ink);
   cursor: default;
-  opacity: 0.75;
+  /* Never dim something into uselessness to show it is finished — a
+     matched pair still has to be readable. */
+  opacity: 1;
 }
 
 .match-item.wrong {
   border-color: var(--bad);
-  background: #fee2e2;
+  background: var(--bad-bg);
+  color: var(--bad-ink);
   animation: shake 0.35s;
 }
 
@@ -644,7 +740,8 @@ footer.site-footer a {
 }
 
 .memory-card.matched .memory-face.front {
-  background: #dcfce7;
+  background: var(--ok-bg);
+  color: var(--ok-ink);
 }
 
 /* ---------- Quiz (Test / Blitz) ---------- */
@@ -678,8 +775,13 @@ footer.site-footer a {
   gap: 10px;
 }
 
+/* A <button> does NOT inherit the page's text colour — the browser gives
+   it its own default, which is near-black. Setting a background and no
+   colour therefore looks fine on a light theme and paints black on navy
+   on a dark one. That is what this was doing. */
 .quiz-option {
   background: var(--card-bg-soft);
+  color: var(--ink);
   border: 2px solid var(--border-soft);
   border-radius: var(--radius-md);
   padding: 14px 16px;
@@ -698,12 +800,14 @@ footer.site-footer a {
 
 .quiz-option.correct {
   border-color: var(--good);
-  background: #dcfce7;
+  background: var(--ok-bg);
+  color: var(--ok-ink);
 }
 
 .quiz-option.wrong {
   border-color: var(--bad);
-  background: #fee2e2;
+  background: var(--bad-bg);
+  color: var(--bad-ink);
 }
 
 .quiz-option:disabled {
@@ -819,8 +923,8 @@ footer.site-footer a {
   bottom: 22px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: var(--ink);
-  color: #fff;
+  background: var(--toast-bg);
+  color: var(--toast-ink);
   padding: 12px 20px;
   border-radius: 999px;
   font-weight: 700;
