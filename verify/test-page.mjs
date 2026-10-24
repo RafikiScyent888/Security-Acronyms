@@ -78,8 +78,9 @@ const state = (pg) => pg.evaluate(() => {
     opts: opts.map((b) => ({ text: b.firstChild.textContent, cls: b.className, word: (b.querySelector(".mark-word") || {}).textContent || null, disabled: b.disabled }))
   };
 });
-/* the right definition for the acronym on screen, from the page's own data */
-const answer = (pg) => pg.evaluate(() => { const a = document.getElementById("quiz-acronym").textContent; return ACRONYMS.find((x) => x.acronym === a).definition; });
+/* the right definition for the question on screen, from the page's own question (an acronym can be listed twice, with
+   two meanings, so looking it up by its letters can find the other one) */
+const answer = (pg) => pg.evaluate(() => questions[view].item.definition);
 const pickByText = (pg, t) => pg.evaluate((t) => { [...document.querySelectorAll("#quiz-options .quiz-option")].find((b) => b.firstChild.textContent === t).click(); }, t);
 
 {

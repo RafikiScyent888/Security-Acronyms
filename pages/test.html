@@ -90,12 +90,41 @@
        locked: its right answer has already been shown, so changing the pick would only change the score. */
     let questions, qIndex, view, score, missed, picks;
 
+    /* No acronym from the student's last three tests is asked in a new one. Remembered in this browser (localStorage), under
+       a key of this site's own: the acronym sites all live at one web address, so they share the browser's storage. A
+       private window or blocked storage only means nothing is remembered; the test still runs. */
+    const HISTORY_KEY = "security-acronyms:test-history", HISTORY_TESTS = 3;
+    function readHistory() {
+      try { const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); return Array.isArray(h) ? h.filter(Array.isArray).slice(-HISTORY_TESTS) : []; }
+      catch (e) { return []; }
+    }
+    function saveHistory(h) {
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(-HISTORY_TESTS))); } catch (e) { /* no storage: nothing remembered */ }
+    }
+
+    /* a wrong option is never the right answer in other words: not another meaning of the same acronym (STP, MAC), not a
+       definition two acronyms share, and no two options read the same */
+    function pickWrongOptions(item, count) {
+      const out = [], seen = new Set([item.definition]);
+      for (const x of shuffleArray(ACRONYMS)) {
+        if (out.length === count) break;
+        if (x.acronym === item.acronym || seen.has(x.definition)) continue;
+        seen.add(x.definition);
+        out.push(x);
+      }
+      return out;
+    }
+
     function buildQuestions() {
-      return sampleArray(ACRONYMS, QUESTION_COUNT).map((item) => {
-        const distractors = pickDistractors(item, ACRONYMS, OPTION_COUNT - 1);
-        const options = shuffleArray([item, ...distractors]);
-        return { item, options };
-      });
+      const history = readHistory(), recent = new Set(history.flat()), want = Math.min(QUESTION_COUNT, ACRONYMS.length);
+      let picked = sampleArray(ACRONYMS.filter((a) => !recent.has(a.id)), want);
+      /* a list too short to leave three whole tests out: top up from the test taken longest ago first */
+      for (let k = 0; picked.length < want && k < history.length; k++) {
+        const have = new Set(picked.map((a) => a.id));
+        picked = picked.concat(shuffleArray(ACRONYMS.filter((a) => history[k].indexOf(a.id) >= 0 && !have.has(a.id))).slice(0, want - picked.length));
+      }
+      saveHistory(history.concat([picked.map((a) => a.id)]));
+      return picked.map((item) => ({ item, options: shuffleArray([item, ...pickWrongOptions(item, OPTION_COUNT - 1)]) }));
     }
 
     function startQuiz() {
