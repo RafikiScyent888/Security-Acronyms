@@ -22,7 +22,7 @@
         <h1>Test</h1>
       </div>
       <div class="hud">
-        <div class="hud-stat"><span>Question</span><span id="hud-index">1 / 15</span></div>
+        <div class="hud-stat"><span id="hud-label">Question</span><span id="hud-index">1 / 15</span></div>
         <div class="hud-stat"><span>Score</span><span id="hud-score">0</span></div>
         <button class="btn btn-ghost" id="pause-btn" aria-label="Pause"></button>
       </div>
@@ -34,9 +34,13 @@
       <div class="quiz-card">
         <div class="quiz-prompt-label">What does this acronym stand for?</div>
         <div class="quiz-prompt" id="quiz-acronym">AAA</div>
+        <p class="review-note" id="review-note" role="status" hidden></p>
         <div class="quiz-options" id="quiz-options"></div>
       </div>
-      <button class="btn btn-primary" id="next-btn" hidden>Next question &rarr;</button>
+      <div class="test-nav">
+        <button class="btn btn-ghost" id="back-btn" hidden>&larr; Back</button>
+        <button class="btn btn-primary" id="next-btn" hidden>Next question &rarr;</button>
+      </div>
     </main>
 
     <div class="results-card" id="results" hidden>
@@ -77,8 +81,14 @@
     const hudScore = document.getElementById("hud-score");
     const progressFill = document.getElementById("progress-fill");
     const nextBtn = document.getElementById("next-btn");
+    const backBtn = document.getElementById("back-btn");
+    const hudLabel = document.getElementById("hud-label");
+    const reviewNote = document.getElementById("review-note");
 
-    let questions, qIndex, score, answered, missed;
+    /* qIndex: the question the student is up to. view: the one on screen, which Back can take to an earlier one.
+       picks[i]: the option chosen for question i. An earlier question comes back as it was answered and stays
+       locked: its right answer has already been shown, so changing the pick would only change the score. */
+    let questions, qIndex, view, score, missed, picks;
 
     function buildQuestions() {
       return sampleArray(ACRONYMS, QUESTION_COUNT).map((item) => {
@@ -91,56 +101,70 @@
     function startQuiz() {
       questions = buildQuestions();
       qIndex = 0;
+      view = 0;
       score = 0;
-      answered = false;
       missed = [];
+      picks = [];
       resultsEl.hidden = true;
       gameArea.hidden = false;
       renderQuestion();
     }
 
     function renderQuestion() {
-      answered = false;
-      nextBtn.hidden = true;
-      const q = questions[qIndex];
+      const q = questions[view], pick = picks[view], reviewing = view < qIndex;
       acronymEl.textContent = q.item.acronym;
-      hudIndex.textContent = `${qIndex + 1} / ${questions.length}`;
+      hudLabel.textContent = reviewing ? "Reviewing" : "Question";
+      hudIndex.textContent = `${view + 1} / ${questions.length}`;
       hudScore.textContent = score;
       progressFill.style.width = `${(qIndex / questions.length) * 100}%`;
+      reviewNote.hidden = !reviewing;
+      reviewNote.textContent = reviewing ? `Looking back at question ${view + 1}. Your answer is locked: the right answer was already shown.` : "";
       optionsEl.innerHTML = "";
       q.options.forEach((opt) => {
         const btn = document.createElement("button");
         btn.className = "quiz-option";
         btn.textContent = opt.definition;
-        btn.addEventListener("click", () => selectOption(btn, opt, q));
+        btn.addEventListener("click", () => selectOption(opt));
         optionsEl.appendChild(btn);
+        if (pick === undefined) return;
+        btn.disabled = true;
+        /* marked three ways: the colour, the rule down its left edge, and the words */
+        const mine = opt.id === pick, right = opt.id === q.item.id;
+        if (!mine && !right) return;
+        btn.classList.add(right ? "correct" : "wrong");
+        const word = document.createElement("span");
+        word.className = "mark-word";
+        word.textContent = right ? (mine ? "✓ Your answer: correct" : "✓ The correct answer") : "✗ Your answer: wrong";
+        btn.appendChild(word);
       });
+      backBtn.hidden = view === 0;
+      nextBtn.hidden = pick === undefined;
     }
 
-    function selectOption(btn, opt, q) {
-      if (answered || pauseCtl.paused) return;
-      answered = true;
-      const correct = opt.id === q.item.id;
-      [...optionsEl.children].forEach((child) => (child.disabled = true));
-      if (correct) {
-        btn.classList.add("correct");
-        score++;
-      } else {
-        btn.classList.add("wrong");
-        missed.push(q.item);
-        [...optionsEl.children].forEach((child) => {
-          if (child.textContent === q.item.definition) child.classList.add("correct");
-        });
-      }
-      hudScore.textContent = score;
-      nextBtn.hidden = false;
+    function selectOption(opt) {
+      if (pauseCtl.paused || view !== qIndex || picks[view] !== undefined) return;
+      const q = questions[view];
+      picks[view] = opt.id;
+      if (opt.id === q.item.id) score++;
+      else missed.push(q.item);
+      renderQuestion();
       nextBtn.focus();
     }
 
     function nextQuestion() {
+      if (pauseCtl.paused) return;
+      if (view < qIndex) { view++; renderQuestion(); (nextBtn.hidden ? optionsEl.firstChild : nextBtn).focus(); return; }
       qIndex++;
+      view = qIndex;
       if (qIndex >= questions.length) finishQuiz();
       else renderQuestion();
+    }
+
+    function backQuestion() {
+      if (pauseCtl.paused || view === 0) return;
+      view--;
+      renderQuestion();
+      (backBtn.hidden ? nextBtn : backBtn).focus();
     }
 
     function finishQuiz() {
@@ -170,6 +194,7 @@
     }
 
     nextBtn.addEventListener("click", nextQuestion);
+    backBtn.addEventListener("click", backQuestion);
     document.getElementById("play-again-btn").addEventListener("click", startQuiz);
 
     const pauseCtl = new PauseController();

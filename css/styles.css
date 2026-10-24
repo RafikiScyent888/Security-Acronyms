@@ -1030,3 +1030,46 @@ footer.site-footer a {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- The test: Back, and answers marked in words (24 October 2026) ----------
+   Back walks to an earlier question, shown as it was answered and locked. A marked answer
+   says what it is in words and carries a rule down its left edge, so colour is never the only
+   signal. Next is royal blue here: white on the old sky-blue gradient was about 2:1, and the
+   button only appears after an answer, so the page sweep never saw it. */
+.test-nav {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.test-nav .btn-primary {
+  background: #0b3a82;
+  color: #fff;
+}
+
+.review-note {
+  margin: -8px 0 16px;
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--card-bg-soft);
+  border: 2px dashed var(--ink-soft);
+  border-radius: var(--radius-md);
+}
+
+.quiz-option .mark-word {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.quiz-option.correct {
+  box-shadow: inset 6px 0 0 var(--good);
+}
+
+.quiz-option.wrong {
+  box-shadow: inset 6px 0 0 var(--bad);
+}
