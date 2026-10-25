@@ -16,7 +16,8 @@
    place makes every later measurement read 1:1 and pass, which is the
    most dangerous failure a checker like this has.
 
-   Calibrated with --plant.
+   Calibrated with --plant (a low-contrast line on every screen) and
+   --plant-sky (the old inks on the window-fixed sky, below).
    ===================================================================== */
 let chromium;
 try { ({ chromium } = await import("playwright")); }
@@ -269,10 +270,42 @@ for (const theme of THEMES) {
   }
 }
 
+/* THE SKY IS FIXED TO THE WINDOW (background-attachment: fixed), SO A
+   LINE OF TEXT CAN SCROLL DOWN ONTO ITS DARKEST BLUE, wherever the sweep
+   above happened to see it. Both inks that sit on the sky must clear 7:1
+   against every stop of it, in both themes. On 25 October 2026 the old
+   soft ink was 4.8:1 on --sky-bot, and the old ink 6.9:1.
+   --plant-sky puts the old inks back, and must fail. */
+const PLANT_SKY = process.argv.includes("--plant-sky");
+const skyFails = [];
+let skyPairs = 0;
+for (const theme of THEMES) {
+  const pg = await br.newPage();
+  await pg.goto(base + "index.html", { waitUntil: "networkidle" });
+  const v = await pg.evaluate(([t, plant]) => {
+    const root = document.documentElement;
+    root.setAttribute("data-theme", t);
+    if (plant && t === "light") { root.style.setProperty("--ink", "#0b2338"); root.style.setProperty("--ink-soft", "#2b4a63"); }
+    const cs = getComputedStyle(root), g = (k) => cs.getPropertyValue(k).trim();
+    return { inks: { "--ink": g("--ink"), "--ink-soft": g("--ink-soft") }, sky: { "--sky-top": g("--sky-top"), "--sky-mid": g("--sky-mid"), "--sky-bot": g("--sky-bot") } };
+  }, [theme, PLANT_SKY]);
+  const hex = (h) => { const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(h); return m ? [1, 2, 3].map((i) => parseInt(m[i], 16)) : null; };
+  for (const [ik, iv] of Object.entries(v.inks)) for (const [sk, sv] of Object.entries(v.sky)) {
+    const a = hex(iv), b = hex(sv);
+    if (!a || !b) { skyFails.push(theme + ": can't read " + ik + " (" + iv + ") or " + sk + " (" + sv + ")"); continue; }
+    skyPairs++;
+    const got = ratio(a, b);
+    if (got + 0.005 < 7) skyFails.push(theme + ": " + ik + " " + iv + " on " + sk + " " + sv + " is " + got.toFixed(2) + ":1 (needs 7)");
+  }
+  await pg.close();
+}
+
 await br.close();
 srv.close();
 
 console.log("measured " + measured + " text elements across " + allScreens.length + " screens");
+console.log((PLANT_SKY ? "[plant-sky] " : "") + "the inks on the sky: " + skyPairs + " ink and sky pairs, " + skyFails.length + " below 7:1");
+if (skyFails.length) { skyFails.forEach((f) => console.log("  " + f)); process.exit(1); }
 
 if (PLANT) {
   const missed = allScreens.filter(s => !plantedOn.has(s));

@@ -8,8 +8,11 @@
   --sky-top: #bfe8ff;
   --sky-mid: #7fd0ff;
   --sky-bot: #4db4f0;
-  --ink: #0b2338;
-  --ink-soft: #2b4a63;
+  /* AAA (25 October 2026): the sky is fixed to the window, so text can
+     scroll down onto its darkest blue (--sky-bot). Both inks clear 7:1
+     there; the old soft ink was 4.8:1 on it, the old ink 6.9:1. */
+  --ink: #061827;
+  --ink-soft: #071d2f;
   --card-bg: #ffffff;
   --card-bg-soft: #f3faff;
   --border-soft: rgba(11, 35, 56, 0.12);
@@ -19,25 +22,30 @@
   --radius-sm: 8px;
   --focus-ring: #0b2338;
 
-  /* Tile themes */
-  --green-1: #34d399;
-  --green-2: #059669;
+  /* Tile themes. White words need deep colours under them: the bright
+     mint, orange-to-red and slate left white at 2.2 to 4.8:1. Deep royal
+     green, red and silver now (25 October 2026), and Blitz's dark words
+     sit on a lavender end instead of the purple (--bolt-soft); the timer
+     bar keeps the purple. */
+  --green-1: #065f46;
+  --green-2: #064e3b;
   --green-ink: #eafff5;
 
   --sun-1: #ffd166;
   --sun-2: #f59e0b;
-  --sun-ink: #3b2400;
+  --sun-ink: #2a1800;
 
-  --storm-1: #64748b;
+  --storm-1: #475569;
   --storm-2: #1e293b;
   --storm-ink: #eef2f7;
 
-  --fire-1: #fb923c;
-  --fire-2: #dc2626;
+  --fire-1: #991b1b;
+  --fire-2: #7f1d1d;
   --fire-ink: #fff5ee;
 
   --bolt-1: #fef08a;
   --bolt-2: #7c3aed;
+  --bolt-soft: #c4b5fd;
   --bolt-ink: #2a1250;
 
   --good: #16a34a;
@@ -86,7 +94,7 @@
   --sky-mid: #123a56;
   --sky-bot: #0a1f30;
   --ink: #eaf5ff;
-  --ink-soft: #b7d3e8;
+  --ink-soft: #dbeaf6;
   --card-bg: #102a3d;
   --card-bg-soft: #0c2032;
   --border-soft: rgba(234, 245, 255, 0.14);
@@ -123,7 +131,7 @@
     --sky-mid: #123a56;
     --sky-bot: #0a1f30;
     --ink: #eaf5ff;
-    --ink-soft: #b7d3e8;
+    --ink-soft: #dbeaf6;
     --card-bg: #102a3d;
     --card-bg-soft: #0c2032;
     --border-soft: rgba(234, 245, 255, 0.14);
@@ -280,7 +288,7 @@ body::after {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #38bdf8, #0284c7);
+  background: linear-gradient(135deg, #1e4fa3, #0b3a82);   /* royal blue: white on the old sky blue was 2.7:1 */
   color: #fff;
 }
 
@@ -431,7 +439,6 @@ footer.site-footer a {
 .tile p {
   margin: 0;
   font-size: 0.92rem;
-  opacity: 0.92;
   line-height: 1.4;
 }
 
@@ -442,7 +449,7 @@ footer.site-footer a {
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.28);   /* a darker pill under white words; a lighter one under dark words, below */
 }
 
 .tile-glow {
@@ -457,7 +464,12 @@ footer.site-footer a {
 .tile--match { background: linear-gradient(150deg, var(--sun-1), var(--sun-2)); color: var(--sun-ink); }
 .tile--memory { background: linear-gradient(150deg, var(--storm-1), var(--storm-2)); }
 .tile--test { background: linear-gradient(150deg, var(--fire-1), var(--fire-2)); }
-.tile--blitz { background: linear-gradient(150deg, var(--bolt-1), var(--bolt-2)); color: var(--bolt-ink); }
+.tile--blitz { background: linear-gradient(150deg, var(--bolt-1), var(--bolt-soft)); color: var(--bolt-ink); }
+
+.tile--match .tile-count,
+.tile--blitz .tile-count {
+  background: rgba(255, 255, 255, 0.62);
+}
 
 .tile--match .tile-icon,
 .tile--blitz .tile-icon {
@@ -599,7 +611,6 @@ footer.site-footer a {
 .flashcard-face .hint {
   margin-top: 10px;
   font-size: 0.8rem;
-  opacity: 0.85;
 }
 
 .flashcard-face .expansion {
