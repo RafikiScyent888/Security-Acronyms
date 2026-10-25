@@ -34,7 +34,7 @@ const PLANT = (process.argv.find((a) => a.startsWith("--plant=")) || "").slice(8
 
 /* each plant is the defect a part of this check exists to catch, swapped into what the server sends */
 const PLANTS = {
-  unlocked: [["pages/test.html", "if (pauseCtl.paused || view !== qIndex || picks[view] !== undefined) return;", "if (pauseCtl.paused) return;"], ["pages/test.html", "        btn.disabled = true;\n", ""]],
+  unlocked: [["pages/test.html", "if (view !== qIndex || picks[view] !== undefined) return;", ""], ["pages/test.html", "        btn.disabled = true;\n", ""]],
   nodisable: [["pages/test.html", "        btn.disabled = true;\n", ""]],
   noword: [["pages/test.html", "btn.appendChild(word);", ""]],
   noback: [["pages/test.html", "backBtn.hidden = view === 0;", "backBtn.hidden = true;"]],

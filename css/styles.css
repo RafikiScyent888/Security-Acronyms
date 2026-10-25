@@ -1084,3 +1084,9 @@ footer.site-footer a {
 .quiz-option.wrong {
   box-shadow: inset 6px 0 0 var(--bad);
 }
+
+/* ---------- The pause button (25 October 2026) ----------
+   Only on the timed games (Blitz, Match, Memory), where it stops the
+   clock. An icon in a button has no size of its own, so it drew 0 wide
+   and the button looked empty: it is sized here, with the word beside it. */
+#pause-btn svg { width: 20px; height: 20px; flex: none; }

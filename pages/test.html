@@ -24,7 +24,6 @@
       <div class="hud">
         <div class="hud-stat"><span id="hud-label">Question</span><span id="hud-index">1 / 15</span></div>
         <div class="hud-stat"><span>Score</span><span id="hud-score">0</span></div>
-        <button class="btn btn-ghost" id="pause-btn" aria-label="Pause"></button>
       </div>
     </div>
 
@@ -66,7 +65,6 @@
   <script>
     renderTopbar();
     renderFooter("site-footer");
-    document.getElementById("pause-btn").innerHTML = ICONS.pause;
     document.getElementById("mode-icon").innerHTML = ICONS.flame;
     document.getElementById("results-icon").innerHTML = ICONS.trophy;
 
@@ -171,7 +169,7 @@
     }
 
     function selectOption(opt) {
-      if (pauseCtl.paused || view !== qIndex || picks[view] !== undefined) return;
+      if (view !== qIndex || picks[view] !== undefined) return;
       const q = questions[view];
       picks[view] = opt.id;
       if (opt.id === q.item.id) score++;
@@ -181,7 +179,6 @@
     }
 
     function nextQuestion() {
-      if (pauseCtl.paused) return;
       if (view < qIndex) { view++; renderQuestion(); (nextBtn.hidden ? optionsEl.firstChild : nextBtn).focus(); return; }
       qIndex++;
       view = qIndex;
@@ -190,7 +187,7 @@
     }
 
     function backQuestion() {
-      if (pauseCtl.paused || view === 0) return;
+      if (view === 0) return;
       view--;
       renderQuestion();
       (backBtn.hidden ? nextBtn : backBtn).focus();
@@ -225,9 +222,6 @@
     nextBtn.addEventListener("click", nextQuestion);
     backBtn.addEventListener("click", backQuestion);
     document.getElementById("play-again-btn").addEventListener("click", startQuiz);
-
-    const pauseCtl = new PauseController();
-    document.getElementById("pause-btn").addEventListener("click", () => pauseCtl.pause());
 
     startQuiz();
   </script>
