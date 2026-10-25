@@ -62,19 +62,31 @@ function showToast(message) {
   el._hideTimer = setTimeout(() => el.classList.remove("show"), 1800);
 }
 
-/* ---------- Best-score persistence (localStorage) ---------- */
+/* ---------- Best-score persistence (localStorage) ----------
+
+   Under this site's own name. Every acronym site is served from the
+   same web address, so they share one browser storage: under the old
+   shared key (aplus-arcade:best:...) a best set on one site showed on
+   the others. Changed 25 October 2026, so bests started again. Storage
+   that's blocked (a private window) keeps the best for this visit only. */
 const Scores = {
+  site: "security-acronyms",
+  mem: {},
   key(game) {
-    return `aplus-arcade:best:${game}`;
+    return `${this.site}:best:${game}`;
   },
   getBest(game) {
-    const raw = localStorage.getItem(this.key(game));
-    return raw ? JSON.parse(raw) : null;
+    try {
+      const raw = localStorage.getItem(this.key(game));
+      if (raw !== null) return JSON.parse(raw);
+    } catch (e) { }
+    return game in this.mem ? this.mem[game] : null;
   },
   setBestIfBetter(game, value, higherIsBetter = true) {
     const current = this.getBest(game);
     if (current === null || (higherIsBetter ? value > current : value < current)) {
-      localStorage.setItem(this.key(game), JSON.stringify(value));
+      this.mem[game] = value;
+      try { localStorage.setItem(this.key(game), JSON.stringify(value)); } catch (e) { }
       return true;
     }
     return false;

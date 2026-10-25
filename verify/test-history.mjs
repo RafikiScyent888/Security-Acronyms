@@ -17,10 +17,15 @@
    still proves the rule).
 
    node verify/test-history.mjs                the check
+   The best score is kept under this site's own key too, never the old
+   shared one, and blocked storage throws nothing from it.
+
+   node verify/test-history.mjs                the check
    node verify/test-history.mjs --plant=NAME   must FAIL: noexclude |
-                    norecord | sharedkey | samemeaning | samedef | nofallback
+                    norecord | sharedkey | samemeaning | samedef | nofallback |
+                    sharedbest | bestunguarded
    ===================================================================== */
-const SITE_KEY = "security-acronyms:test-history";
+const SITE_KEY = "security-acronyms:test-history", BEST = SITE_KEY.split(":")[0] + ":best:";
 let chromium;
 try { ({ chromium } = await import("playwright")); }
 catch (e) { ({ chromium } = await import("/opt/node22/lib/node_modules/playwright/index.mjs")); }
@@ -39,7 +44,9 @@ const PLANTS = {
   sharedkey: [[T, 'const HISTORY_KEY = "' + SITE_KEY + '"', 'const HISTORY_KEY = "aplus-arcade:test-history"']],
   samemeaning: [[T, "if (x.acronym === item.acronym || seen.has(x.definition)) continue;", "if (x.id === item.id || seen.has(x.definition)) continue;"]],
   samedef: [[T, "if (x.acronym === item.acronym || seen.has(x.definition)) continue;", "if (x.acronym === item.acronym) continue;"]],
-  nofallback: [[T, "for (let k = 0; picked.length < want && k < history.length; k++) {", "for (let k = 0; false; k++) {"]]
+  nofallback: [[T, "for (let k = 0; picked.length < want && k < history.length; k++) {", "for (let k = 0; false; k++) {"]],
+  sharedbest: [["js/common.js", 'site: "' + SITE_KEY.split(":")[0] + '"', 'site: "aplus-arcade"']],
+  bestunguarded: [["js/common.js", "    } catch (e) { }\n    return game in this.mem", "    } finally { }\n    return game in this.mem"]]
 };
 if (PLANT && !PLANTS[PLANT]) { console.log("no plant called " + PLANT); process.exit(2); }
 
@@ -96,6 +103,10 @@ async function takeTest(pg) {
     const h = store.mine ? JSON.parse(store.mine) : null;
     check(!!h && h.length === 3, "the memory is under this site's own key (" + SITE_KEY + ") and holds three tests: " + JSON.stringify(store.keys));
     check(!!h && JSON.stringify(h[2].slice().sort()) === JSON.stringify(tests[7].map((x) => x.id).sort()), "its last test is the one just taken");
+    /* the best score too, under this site's own name (25 October 2026: it was one key for all four acronym sites, so a best set on
+       one showed on the others) */
+    const own = BEST + "test-pct";
+    check(store.keys.includes(own) && !store.keys.some((k) => /^aplus-arcade:best:/.test(k)), "the best test score is under this site's own key (" + own + "), and nothing under the old shared one: " + JSON.stringify(store.keys));
   } catch (e) { check(false, "the eight tests stopped: " + String(e.message).split("\n")[0]); }
   await ctx.close();
 }
@@ -108,8 +119,8 @@ async function takeTest(pg) {
   await pg.goto(base + T, { waitUntil: "networkidle" });
   try { const a = await takeTest(pg); await pg.click("#play-again-btn"); const b = await takeTest(pg); check(a.length === 15 && b.length === 15, "storage blocked: two whole tests run"); }
   catch (e) { check(false, "storage blocked: the test stopped (" + String(e.message).split("\n")[0] + ")"); }
-  /* the shared best-score helper doesn't guard its storage; only the test's own memory is held to it here */
-  check(!e2.some((m) => !/storage blocked/.test(m) || /HISTORY|readHistory|saveHistory/.test(m)), "storage blocked: no error from the test's memory: " + e2.join(" | "));
+  /* nothing on the page may throw for it: the test's memory nor the best score (which guards its storage since 25 October 2026) */
+  check(!e2.length, "storage blocked: no error from the test's memory or its best score: " + e2.join(" | "));
   await ctx.close();
 }
 
