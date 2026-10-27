@@ -23,37 +23,76 @@
       </div>
       <div class="hud">
         <div class="hud-stat"><span>Card</span><span id="hud-index">1 / 334</span></div>
-        <div class="hud-stat"><span>Known</span><span id="hud-known">0</span></div>
+        <div class="hud-stat"><span>Know it</span><span id="hud-know">0</span></div>
+        <div class="hud-stat"><span>Study it</span><span id="hud-study">0</span></div>
       </div>
     </div>
 
     <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
 
     <main class="card-stage">
-      <div class="flashcard-wrap">
+      <!-- Which cards to go through: every card, or one of the student's two lists -->
+      <div class="deck-pick" role="group" aria-label="Which cards to go through">
+        <button class="btn btn-ghost deck-btn" id="deck-all" data-deck="all" aria-pressed="true"></button>
+        <button class="btn btn-ghost deck-btn" id="deck-study" data-deck="study" aria-pressed="false"></button>
+        <button class="btn btn-ghost deck-btn" id="deck-know" data-deck="know" aria-pressed="false"></button>
+      </div>
+
+      <div class="flashcard-wrap" id="card-wrap">
         <div class="flashcard" id="flashcard" role="button" tabindex="0" aria-label="Flashcard, press to flip">
           <div class="flashcard-face front">
+            <div class="mark-badge" id="badge-front" hidden></div>
             <div class="acronym-big" id="face-acronym">AAA</div>
             <div class="hint">Tap to reveal</div>
           </div>
           <div class="flashcard-face back">
+            <div class="mark-badge" id="badge-back" hidden></div>
             <div class="expansion" id="face-expansion"></div>
             <div class="definition" id="face-definition"></div>
           </div>
         </div>
       </div>
 
-      <div class="card-controls">
+      <!-- A list with nothing in it: said so, in place of the card -->
+      <div class="empty-deck" id="empty-deck" hidden>
+        <p id="empty-text"></p>
+        <button class="btn btn-primary" id="empty-all">Go to all the cards</button>
+      </div>
+
+      <div class="card-controls" id="nav-controls">
         <button class="btn btn-ghost" id="prev-btn">&larr; Prev</button>
         <button class="btn btn-primary" id="flip-btn">Flip</button>
-        <button class="btn btn-ghost" id="known-btn">I know this ✓</button>
         <button class="btn btn-ghost" id="next-btn">Next &rarr;</button>
       </div>
+      <div class="card-controls" id="mark-controls">
+        <button class="btn btn-ghost mark-btn mark-know" id="know-btn" aria-pressed="false"></button>
+        <button class="btn btn-ghost mark-btn mark-study" id="study-btn" aria-pressed="false"></button>
+      </div>
+      <p class="mark-status" id="mark-status" role="status" aria-live="polite"></p>
       <div class="card-controls">
         <button class="btn btn-ghost" id="shuffle-btn"></button>
-        <button class="btn btn-ghost" id="restart-btn">Restart deck</button>
+        <button class="btn btn-ghost" id="list-btn" aria-expanded="false" aria-controls="list-panel">Show my lists</button>
+        <button class="btn btn-ghost" id="clear-btn">Clear my lists</button>
       </div>
-      <p class="center-note">Keyboard: Space/Enter = flip &middot; ← → = prev/next</p>
+
+      <!-- Clearing both lists asks first: it can't be undone -->
+      <div class="confirm-box" id="clear-confirm" role="group" aria-labelledby="clear-q" hidden>
+        <p id="clear-q">Clear both lists? Every card goes back to unmarked. This can't be undone.</p>
+        <div class="card-controls">
+          <button class="btn btn-danger" id="clear-yes">Yes, clear both lists</button>
+          <button class="btn btn-ghost" id="clear-no">Keep my lists</button>
+        </div>
+      </div>
+
+      <!-- Both lists to read through; each acronym opens its card -->
+      <section class="list-panel" id="list-panel" aria-label="My lists" hidden>
+        <h2 id="list-study-h"></h2>
+        <ol class="mark-list" id="list-study"></ol>
+        <h2 id="list-know-h"></h2>
+        <ol class="mark-list" id="list-know"></ol>
+      </section>
+
+      <p class="center-note">Keyboard: Space/Enter = flip &middot; &larr; &rarr; = prev/next &middot; K = know it &middot; S = study it</p>
     </main>
 
     <footer class="site-footer" id="site-footer"></footer>
@@ -67,36 +106,94 @@
     document.getElementById("mode-icon").innerHTML = ICONS.cards;
     document.getElementById("shuffle-btn").innerHTML = `${ICONS.shuffle} Shuffle`;
 
-    const STORAGE_KEY = "aplus-arcade:flashcards:known";
-    let deck = shuffleArray(ACRONYMS);
+    /* The student's two lists, "Know it" and "Study it": a card is in one, the other, or neither. Saved in this browser under this
+       site's own name. Every acronym site is served from the same web address, so they share one browser storage, and each site
+       numbers its cards from 1: under the old shared key (aplus-arcade:flashcards:known) a card marked on one site showed as known
+       on the others. Changed 27 October 2026, so both lists started empty. Storage that's blocked (a private window) keeps the
+       lists for this visit only. */
+    const LISTS_KEY = `${Scores.site}:flashcards:lists`;
+    const BY_ID = new Map(ACRONYMS.map((a) => [a.id, a]));
+    const lists = { know: new Set(), study: new Set() };
+    try {
+      const saved = JSON.parse(localStorage.getItem(LISTS_KEY) || "{}");
+      ["know", "study"].forEach((k) => (Array.isArray(saved[k]) ? saved[k] : []).forEach((id) => { if (BY_ID.has(id)) lists[k].add(id); }));
+      lists.know.forEach((id) => lists.study.delete(id));   /* never in both */
+    } catch (e) { /* nothing saved, or storage blocked: both lists start empty */ }
+    function saveLists() {
+      try { localStorage.setItem(LISTS_KEY, JSON.stringify({ know: [...lists.know], study: [...lists.study] })); } catch (e) { /* kept for this visit */ }
+    }
+    const NAME = { know: "Know it", study: "Study it" };
+    const listOf = (id) => (lists.know.has(id) ? "know" : lists.study.has(id) ? "study" : null);
+
+    let deckName = "all";
+    let deck = [];
     let index = 0;
     let flipped = false;
-    let known = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"));
 
-    const cardEl = document.getElementById("flashcard");
-    const acronymEl = document.getElementById("face-acronym");
-    const expansionEl = document.getElementById("face-expansion");
-    const definitionEl = document.getElementById("face-definition");
-    const hudIndex = document.getElementById("hud-index");
-    const hudKnown = document.getElementById("hud-known");
-    const progressFill = document.getElementById("progress-fill");
-    const knownBtn = document.getElementById("known-btn");
+    const $ = (id) => document.getElementById(id);
+    const cardEl = $("flashcard");
 
-    function saveKnown() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...known]));
+    /* the cards to go through: all of them, or one list's, shuffled */
+    function buildDeck(name) {
+      deckName = name;
+      deck = shuffleArray(name === "all" ? ACRONYMS : ACRONYMS.filter((a) => lists[name].has(a.id)));
+      index = 0;
     }
 
     function render() {
-      const item = deck[index];
-      acronymEl.textContent = item.acronym;
-      expansionEl.textContent = item.expansion;
-      definitionEl.textContent = item.definition;
+      const empty = deck.length === 0;
+      ["all", "study", "know"].forEach((k) => {
+        const b = $("deck-" + k), n = k === "all" ? ACRONYMS.length : lists[k].size, on = k === deckName;
+        b.setAttribute("aria-pressed", String(on));
+        b.textContent = (on ? "\u2713 " : "") + (k === "all" ? "All cards" : NAME[k]) + " (" + n + ")";
+      });
+      $("hud-know").textContent = lists.know.size;
+      $("hud-study").textContent = lists.study.size;
+      $("card-wrap").hidden = empty;
+      $("nav-controls").hidden = empty;
+      $("mark-controls").hidden = empty;
+      $("empty-deck").hidden = !empty;
       flipped = false;
       cardEl.classList.remove("is-flipped");
-      hudIndex.textContent = `${index + 1} / ${deck.length}`;
-      hudKnown.textContent = known.size;
-      progressFill.style.width = `${((index + 1) / deck.length) * 100}%`;
-      knownBtn.textContent = known.has(item.id) ? "Known ✓ (undo)" : "I know this ✓";
+      if (empty) {
+        $("empty-text").textContent = "Your " + NAME[deckName] + " list is empty. In All cards, mark a card \u201c" + NAME[deckName] + "\u201d to put it here.";
+        $("hud-index").textContent = "0 / 0";
+        $("progress-fill").style.width = "0%";
+      } else {
+        const item = deck[index], at = listOf(item.id);
+        $("face-acronym").textContent = item.acronym;
+        $("face-expansion").textContent = item.expansion;
+        $("face-definition").textContent = item.definition;
+        $("hud-index").textContent = `${index + 1} / ${deck.length}`;
+        $("progress-fill").style.width = `${((index + 1) / deck.length) * 100}%`;
+        ["badge-front", "badge-back"].forEach((b) => { $(b).hidden = !at; $(b).textContent = at === "know" ? "\u2713 In your Know it list" : at === "study" ? "\u21BA In your Study it list" : ""; });
+        /* each button says what it will do: put the card in its list, move it there from the other, or take it out */
+        $("know-btn").textContent = at === "know" ? "\u2713 In Know it (undo)" : at === "study" ? "Move to Know it \u2713" : "Know it \u2713";
+        $("study-btn").textContent = at === "study" ? "\u21BA In Study it (undo)" : at === "know" ? "Move to Study it \u21BA" : "Study it \u21BA";
+        $("know-btn").setAttribute("aria-pressed", String(at === "know"));
+        $("study-btn").setAttribute("aria-pressed", String(at === "study"));
+      }
+      if (!$("list-panel").hidden) renderLists();
+    }
+
+    /* both lists to read, A to Z; an acronym opens its card in that list */
+    function renderLists() {
+      ["study", "know"].forEach((k) => {
+        const items = ACRONYMS.filter((a) => lists[k].has(a.id)).sort((a, b) => a.acronym.localeCompare(b.acronym));
+        $("list-" + k + "-h").textContent = "My " + NAME[k] + " list (" + items.length + ")";
+        const ol = $("list-" + k);
+        ol.innerHTML = "";
+        if (!items.length) { const li = document.createElement("li"); li.className = "mark-list-empty"; li.textContent = "Nothing in it yet."; ol.appendChild(li); }
+        items.forEach((a) => {
+          const li = document.createElement("li"), b = document.createElement("button");
+          b.type = "button"; b.className = "mark-list-item";
+          b.innerHTML = "<b></b><span></span>";
+          b.firstChild.textContent = a.acronym; b.lastChild.textContent = a.expansion;
+          b.setAttribute("aria-label", a.acronym + ", " + a.expansion + ": open its card");
+          b.addEventListener("click", () => { buildDeck(k); index = Math.max(0, deck.findIndex((d) => d.id === a.id)); render(); cardEl.focus(); });
+          li.appendChild(b); ol.appendChild(li);
+        });
+      });
     }
 
     function flip() {
@@ -105,44 +202,75 @@
     }
 
     function go(delta) {
+      if (!deck.length) return;
       index = (index + delta + deck.length) % deck.length;
       render();
+    }
+
+    /* mark the card: into a list (or moved there from the other) goes on to the next card; pressed again, it comes out and stays.
+       Going through one of the lists, a card that leaves it leaves the deck too, and the next one takes its place */
+    function mark(k) {
+      if (!deck.length) return;
+      const item = deck[index], was = listOf(item.id), other = k === "know" ? "study" : "know";
+      if (was === k) { lists[k].delete(item.id); $("mark-status").textContent = item.acronym + ": taken out of " + NAME[k] + "."; }
+      else { lists[other].delete(item.id); lists[k].add(item.id); $("mark-status").textContent = item.acronym + ": " + (was ? "moved to " : "added to ") + NAME[k] + "."; }
+      saveLists();
+      if (deckName !== "all" && listOf(item.id) !== deckName) {
+        deck.splice(index, 1);
+        if (index >= deck.length) index = 0;
+        render();
+      } else if (was !== k) go(1);
+      else render();
     }
 
     cardEl.addEventListener("click", flip);
     cardEl.addEventListener("keydown", (e) => {
       if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); }
     });
-    document.getElementById("flip-btn").addEventListener("click", flip);
-    document.getElementById("prev-btn").addEventListener("click", () => go(-1));
-    document.getElementById("next-btn").addEventListener("click", () => go(1));
-    document.getElementById("shuffle-btn").addEventListener("click", () => {
-      deck = shuffleArray(ACRONYMS);
-      index = 0;
+    $("flip-btn").addEventListener("click", flip);
+    $("prev-btn").addEventListener("click", () => go(-1));
+    $("next-btn").addEventListener("click", () => go(1));
+    $("know-btn").addEventListener("click", () => mark("know"));
+    $("study-btn").addEventListener("click", () => mark("study"));
+    document.querySelectorAll(".deck-btn").forEach((b) => b.addEventListener("click", () => {
+      buildDeck(b.dataset.deck);
+      $("mark-status").textContent = "";
+      render();
+    }));
+    $("empty-all").addEventListener("click", () => { buildDeck("all"); render(); $("deck-all").focus(); });
+    $("shuffle-btn").addEventListener("click", () => {
+      buildDeck(deckName);
       render();
       showToast("Deck shuffled");
     });
-    document.getElementById("restart-btn").addEventListener("click", () => {
-      known.clear();
-      saveKnown();
-      deck = shuffleArray(ACRONYMS);
-      index = 0;
-      render();
-      showToast("Deck restarted");
+    $("list-btn").addEventListener("click", () => {
+      const open = $("list-panel").hidden;
+      $("list-panel").hidden = !open;
+      $("list-btn").setAttribute("aria-expanded", String(open));
+      $("list-btn").textContent = open ? "Hide my lists" : "Show my lists";
+      if (open) renderLists();
     });
-    knownBtn.addEventListener("click", () => {
-      const item = deck[index];
-      if (known.has(item.id)) known.delete(item.id);
-      else known.add(item.id);
-      saveKnown();
+    $("clear-btn").addEventListener("click", () => { $("clear-confirm").hidden = false; $("clear-no").focus(); });
+    $("clear-no").addEventListener("click", () => { $("clear-confirm").hidden = true; $("clear-btn").focus(); });
+    $("clear-yes").addEventListener("click", () => {
+      lists.know.clear(); lists.study.clear(); saveLists();
+      $("clear-confirm").hidden = true;
+      $("mark-status").textContent = "Both lists cleared.";
+      buildDeck("all");
       render();
+      showToast("Both lists cleared");
+      $("clear-btn").focus();
     });
 
     document.addEventListener("keydown", (e) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (e.key === "ArrowRight") go(1);
       if (e.key === "ArrowLeft") go(-1);
+      if (e.key === "k" || e.key === "K") mark("know");
+      if (e.key === "s" || e.key === "S") mark("study");
     });
 
+    buildDeck("all");
     render();
   </script>
 </body>

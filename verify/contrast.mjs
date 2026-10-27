@@ -55,6 +55,12 @@ const PAGES = [
   { name: "blitz", url: "pages/blitz.html", start: "#start-btn" },
   { name: "test", url: "pages/test.html", start: "#start-btn" },
   { name: "flashcards", url: "pages/flashcards.html", start: "#start-btn" },
+  /* the Know it and Study it lists (27 October 2026): a card in Study it with its badge and pressed button, the status line, both
+     lists open to read, and the confirm before clearing; a Know it card turned over, its badge on the back; an empty list. Each
+     starts by clearing the lists through the page, so one screen's marks don't carry into the next */
+  { name: "flashcards-lists", url: "pages/flashcards.html", setup: "['clear-btn','clear-yes','know-btn','study-btn','prev-btn','list-btn','clear-btn'].forEach(function (id) { document.getElementById(id).click(); })" },
+  { name: "flashcards-known-back", url: "pages/flashcards.html", setup: "['clear-btn','clear-yes','know-btn','prev-btn','flip-btn'].forEach(function (id) { document.getElementById(id).click(); })" },
+  { name: "flashcards-empty", url: "pages/flashcards.html", setup: "['clear-btn','clear-yes','deck-study'].forEach(function (id) { document.getElementById(id).click(); })" },
   { name: "match", url: "pages/match.html", start: "#start-btn" },
   { name: "memory", url: "pages/memory.html", start: "#start-btn" },
 
@@ -101,6 +107,7 @@ for (const theme of THEMES) {
       const b = pg.locator(pg0.start);
       if (await b.count()) { await b.click().catch(() => {}); await pg.waitForTimeout(400); }
     }
+    if (pg0.setup) { await pg.evaluate(pg0.setup); await pg.waitForTimeout(700); }   /* the card turns over in half a second */
     if (pg0.toast) {
       await pg.evaluate((m) => {
         showToast(m);

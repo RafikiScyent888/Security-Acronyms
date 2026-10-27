@@ -38,7 +38,7 @@ The main page uses a sky-blue canvas. Each tile has its own themed color:
 
 ## Features
 
-- **Flashcards** — classic flip cards: acronym on the front, full expansion + definition on the back. Shuffle, step through with keyboard arrows, and mark cards as "known" (saved locally).
+- **Flashcards** — classic flip cards: acronym on the front, full expansion + definition on the back. Shuffle and step through with keyboard arrows. Each card can be marked **Know it** or **Study it** (K / S on the keyboard), which goes on to the next card; the student goes through all the cards or just one of the two lists, reads both lists A to Z, and can clear them. Saved in the browser under this site's own name (the acronym sites share one browser storage).
 - **Match** — tap an acronym, then tap its matching definition across two columns. 8 pairs per round, scored on time and mistakes.
 - **Memory** — a concentration/flip grid. Find the 6 acronym ↔ expansion pairs in as few flips as possible.
 - **Test** — an untimed 15-question multiple-choice quiz with a results screen and a review list of anything missed.
