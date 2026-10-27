@@ -17,6 +17,7 @@ import { fileURLToPath } from "url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json" };
 const SITE = /site: "([^"]+)"/.exec(readFileSync(join(ROOT, "js/common.js"), "utf8"))[1];
+const OTHER = SITE === "cysa-acronyms" ? "security-acronyms" : "cysa-acronyms";   /* another acronym site, whose lists must never show here */
 
 /* each plant: a change to the page's code, served instead of the real one, and the check it must make fail */
 const PLANTS = [
@@ -58,7 +59,7 @@ async function run(plant) {
   const p = await ctx.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message));
   /* another site's lists and the old shared key, already in this browser: neither may show here */
   await p.goto(base + "index.html");
-  await p.evaluate(() => { localStorage.setItem("cysa-acronyms:flashcards:lists", JSON.stringify({ know: [1, 2, 3, 4, 5], study: [6, 7, 8] })); localStorage.setItem("aplus-arcade:flashcards:known", JSON.stringify([9, 10, 11])); localStorage.setItem("aplus-arcade:flashcards:lists", JSON.stringify({ know: [12, 13], study: [14] })); });
+  await p.evaluate((other) => { localStorage.setItem(other + ":flashcards:lists", JSON.stringify({ know: [1, 2, 3, 4, 5], study: [6, 7, 8] })); localStorage.setItem("aplus-arcade:flashcards:known", JSON.stringify([9, 10, 11])); localStorage.setItem("aplus-arcade:flashcards:lists", JSON.stringify({ know: [12, 13], study: [14] })); }, OTHER);
   await p.goto(base + "pages/flashcards.html"); await p.waitForTimeout(150);
   /* a click that can't happen (a planted fault hid its button) is a failed step, not a stopped run */
   const clk = async (pg, sel) => { try { await pg.click(sel, { timeout: 2500 }); } catch (e) { out.push("couldn't click " + sel); } };
